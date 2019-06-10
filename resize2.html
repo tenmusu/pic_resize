@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Resize image</title>
+    <script type="text/javascript">
+
+      //
+      // リサイズ処理
+      // キャンバスに画像を出力しリサイズする
+      function resizeImage(base64image, callback) {
+        const MAX_SIZE = Number(document.getElementById("size").value);
+        let canvas = document.createElement("canvas");
+        let ctx = canvas.getContext("2d");
+        let image = new Image();
+        image.crossOrigin = "Anonymous";
+
+        //イメージを縮小する
+        image.onload = function(evt) {
+          let dstWidth, dstHeight;
+
+　        //縮小サイズを計算
+　        //縦横のサイズが大きい方を指定したSizeにする
+          if (this.width > this.height) {
+            dstWidth = MAX_SIZE;
+            dstHeight = this.height * MAX_SIZE / this.width;
+          } else {
+            dstHeight = MAX_SIZE;
+            dstWidth = this.width * MAX_SIZE / this.height;
+          }
+          canvas.width = dstWidth;
+          canvas.height = dstHeight;
+
+          //リサイズ
+          ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0, dstWidth, dstHeight);
+          callback(canvas.toDataURL("image/jpeg"));
+        };
+        image.src = base64image;
+      }
+ 
+      //
+      // 出力するファイル名
+      //
+      function buildFilename(origname) {
+        let re = /(.*)(?:\.([^.]+$))/;
+        let basename = origname.match(re)[1];
+        return "resized_" + basename + ".jpg";
+      }
+ 
+　　　　//
+      // ファイル選択
+　　　　//
+      function handleFileSelect(evt) {
+        //ファイルリストを取得
+        let files = evt.target.files;
+
+        for (let i = 0, f; f = files[i]; i++) {
+          let reader = new FileReader();
+          reader.onload = (function(theFile) {
+            return function(e) {
+            //リサイズした画像をlistタグ内に埋め込む
+            //戻り値のimgUrlをサーバーに渡せば、縮小した画像も対応でるはず
+            //imgUrlを「,」で分割し、第二フィールド（画像の実態）を渡せばよい
+            resizeImage(e.target.result, function(imgUrl) {
+              //list→figure→a,figcaptionの形でHTMLを生成する
+              let dest = document.getElementById("list");
+              let fig = document.createElement("figure");
+              fig.style = "float: left;";
+
+              //aタグに選択したイメージを割り当てる
+              let a = document.createElement("a");
+              a.href = imgUrl;
+              a.download = buildFilename(theFile.name);
+              let image = document.createElement("img");
+              image.src = imgUrl;
+              a.appendChild(image);
+              fig.appendChild(a);
+
+　　　　　　　　　//capitionの生成
+              let caption = document.createElement("figcaption")
+              caption.innerHTML = theFile.name + " resized.";
+              fig.appendChild(caption);
+
+              //listタグにfigureタグを埋め込む
+              dest.appendChild(fig);
+            });
+          }})(f);
+          reader.readAsDataURL(f);
+        }
+      }
+ 
+      document.addEventListener("DOMContentLoaded", function() {
+　　　　　//ファイル選択に変化があった場合
+        document.getElementById("files").addEventListener("change", handleFileSelect, false);
+      }, false);
+    </script>
+  </head>
+  <body>
+    <h1>Resize image</h1>
+    <p>下のSizeで指定したサイズを基準にリサイズします。</p>
+    <p>リサイズした画像が下に表示されます。</p>
+    <p>画像をクリックすればダウンロードできます。</p>
+    Size: <input type=text id="size" value="200" /> pixel<br />
+    <input type="file" id="files" name="files[]" multiple /><br />
+    <div id="list"></div>
+  </body>
+</html>
